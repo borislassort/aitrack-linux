@@ -45,6 +45,6 @@ jobs:
       uses: actions/upload-artifact@v3.1.2
       with:
         name: aitrack-linux-${SHORT_SHA}
-        path: aitrack-linux-${SHORT_SHA}
+        path: aitrack-linux-${SHORT_SHA}/
         if-no-files-found: error
         retention-days: 90
