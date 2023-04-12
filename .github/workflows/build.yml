@@ -15,6 +15,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Add SHORT_SHA env property with commit short sha
+      run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
     - name: Install deps
       run: |
         sudo dnf install -y opencv-devel qt5-qtbase-devel spdlog-devel qt5-qtx11extras-devel
@@ -26,11 +28,12 @@ jobs:
         make
     - name: Build Artifact
       run: |
-        mkdir -p install/{models,lib64,bin}
-        cp models/* install/models/
-        cp onnxruntime-linux-x64-1.4.0/lib/libonnxruntime.so.1.4.0 install/lib64/
-        cp ./aitrack install/bin/
-        cd install
+        mkdir -p aitrack-linux-${SHORT_SHA}/{models,lib64,bin}
+        cp models/* aitrack-linux-${SHORT_SHA}/models/
+        cp onnxruntime-linux-x64-1.4.0/lib/libonnxruntime.so.1.4.0 aitrack-linux-${SHORT_SHA}/lib64/
+        cp ./aitrack aitrack-linux-${SHORT_SHA}/bin/
+        cd aitrack-linux-${SHORT_SHA}
+        ## Create install script
         cat <<'EOF' > install.sh
         #!/bin/bash
         cp $(dirname -- "$0")/bin/* /usr/bin/
@@ -38,12 +41,10 @@ jobs:
         cp $(dirname -- "$0")/lib64/* /usr/lib64/
         EOF
         chmod +x install.sh
-        tar -czvf ../aitrack-linux.tar.gz ./share/aitrack/models ./lib64 ./bin ./install.sh
-        
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.1.2
       with:
-        name: aitrack-linux
-        path: aitrack-linux.tar.gz
+        name: aitrack-linux-${SHORT_SHA}
+        path: aitrack-linux-${SHORT_SHA}
         if-no-files-found: error
         retention-days: 90
