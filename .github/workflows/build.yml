@@ -1,0 +1,49 @@
+name: Build aitrack-linux
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:37
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install deps
+      run: |
+        sudo dnf install -y opencv-devel qt5-qtbase-devel spdlog-devel qt5-qtx11extras-devel
+        curl -L https://github.com/microsoft/onnxruntime/releases/download/v1.4.0/onnxruntime-linux-x64-1.4.0.tgz -o onnxruntime-linux-x64-1.4.0.tgz
+        tar -xzvf onnxruntime-linux-x64-1.4.0.tgz
+    - name: Make
+      run: |
+        qmake-qt5 -makefile
+        make
+    - name: Build Artifact
+      run: |
+        mkdir -p install/{models,lib64,bin}
+        cp models/* install/models/
+        cp onnxruntime-linux-x64-1.4.0/lib/libonnxruntime.so.1.4.0 install/lib64/
+        cp ./aitrack install/bin/
+        cd install
+        cat <<'EOF' > install.sh
+        #!/bin/bash
+        cp $(dirname -- "$0")/bin/* /usr/bin/
+        mkdir -p /usr/share/aitrack/models/ && cp $(dirname -- "$0")/models/* /usr/share/aitrack/models/
+        cp $(dirname -- "$0")/lib64/* /usr/lib64/
+        EOF
+        chmod +x install.sh
+        tar -czvf ../aitrack-linux.tar.gz ./share/aitrack/models ./lib64 ./bin ./install.sh
+        
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: aitrack-linux
+        path: aitrack-linux.tar.gz
+        if-no-files-found: error
+        retention-days: 90
